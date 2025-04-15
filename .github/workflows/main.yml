@@ -1,28 +1,35 @@
-name: CI
+name: Minikube CI Test
+
 on:
-  - pull_request
+  pull_request:
+
 jobs:
-  job1:
+  build-and-test:
     runs-on: ubuntu-latest
-    name: build example and deploy to minikube
+    name: Build and Deploy to Minikube
+
     steps:
-    - uses: actions/checkout@v4
-      with:
-        repository: medyagh/local-dev-example-with-minikube
-    - name: Start minikube
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Start Minikube
       uses: medyagh/setup-minikube@latest
-    - name: Try the cluster!
-      run: kubectl get pods -A
-    - name: Build image
+
+    - name: Verify Minikube cluster
+      run: kubectl get nodes
+
+    - name: Build Docker image with Minikube
       run: |
-        minikube image build -t local/devex:v1 .
-    - name: Deploy to minikube
-      run:
+        minikube image build -t local/example:latest .
+
+    - name: Deploy to Minikube
+      run: |
         kubectl apply -f deploy/k8s.yaml
-        kubectl wait --for=condition=ready pod -l app=local-devex
-    - name: Test service URLs
+        kubectl rollout status deployment/example
+
+    - name: Test Service via Curl
       run: |
-        minikube service list
-        minikube service local-devex-svc --url
-        echo "------------------opening the service------------------"
-        curl $(minikube service local-devex-svc --url)
+        echo "Getting Minikube service URL"
+        SERVICE_URL=$(minikube service example --url)
+        echo "Service URL: $SERVICE_URL"
+        curl $SERVICE_URL
